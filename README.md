@@ -1,3 +1,5 @@
+> Archived by the owner in NDDev-Technocracy-Archive on 2026-10-13. This unfinished project is on hold and retained for reference and future development.
+
 # rldyourmnd-codex-astra-setup
 
 A GPT-6-Astra posture for Codex, in one implementation that works for the CLI
