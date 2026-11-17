@@ -2,67 +2,31 @@ name: ci
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, edited]
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  # Obsolete pull-request heads are cancelled; a running main validation always completes.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions: {}
 
 jobs:
-  shell:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: NDDev-Technocracy-Standarts/std-0004-ci-cd-workflows/.github/actions/tools@c192c6adcf22088abf456635de614d42e8fa3f8d # nddev-cicd-v0.6.20
-        with:
-          capability: shell
-      - name: Shell syntax and ShellCheck
-        run: |
-          bash -n bin/astra
-          shellcheck --severity=warning bin/astra
-
-  workflows:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: NDDev-Technocracy-Standarts/std-0004-ci-cd-workflows/.github/actions/tools@c192c6adcf22088abf456635de614d42e8fa3f8d # nddev-cicd-v0.6.20
-        with:
-          capability: security
-      - name: Lint and audit workflows
-        run: |
-          actionlint
-          zizmor --offline --no-progress .github
-      - name: Scan new pull request commits, or the full history on main
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [ -n "$BASE" ]; then
-            gitleaks git --no-banner --redact --log-opts="$BASE..$HEAD" .
-          else
-            gitleaks git --no-banner --redact .
-          fi
+  check:
+    uses: NDDev-Technocracy-OpenNetwork/nddev-ci/.github/workflows/check.yml@86d0117166c205c6b52c91e0f95c8deaf5a29137 # v0.6.59
+    permissions:
+      contents: read
+    with:
+      hosted-runner: ubuntu-24.04
+      tools: shellcheck@0.11.0
+      fetch-depth: 0
 
   gate:
-    needs: [shell, workflows]
+    needs: [check]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
+    permissions: {}
     timeout-minutes: 5
     steps:
-      - uses: NDDev-Technocracy-Standarts/std-0004-ci-cd-workflows/.github/actions/gate@c192c6adcf22088abf456635de614d42e8fa3f8d # nddev-cicd-v0.6.20
-        with:
-          needs: ${{ toJSON(needs) }}
-          expected: '{"shell":"success","workflows":"success"}'
+      - name: Require the complete shared source check
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: jq -e 'map_values(.result) == {"check":"success"}' <<< "$NEEDS"
