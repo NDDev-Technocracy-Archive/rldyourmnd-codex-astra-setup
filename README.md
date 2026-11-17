@@ -314,3 +314,15 @@ Things measured here that contradict published documentation:
   unprefixed name that appears in write-ups
 - the subagent switch that matters is **`agents.enabled`**, not the
   `multi_agent` feature flag, which changes the prompt by zero bytes
+
+## Source maintenance
+
+Run `just check` for Just formatting, Bash syntax and the existing ShellCheck
+policy. `just verify` runs the complete source-only check after integration.
+These commands do not execute the launcher or contact Codex or a model provider.
+CI runs the same commands and shared workflow/security checks. Existing dependency
+update coverage stays in place.
+
+Runtime configuration and model/account behavior require their own qualification;
+a successful source check does not establish them. The launcher and posture values
+remain unchanged by this CI maintenance.
